@@ -1,0 +1,8 @@
+__pycache__
+models
+logs
+.env
+data/alpaca_data_cleaned.json
+data/alpaca_data.json
+data/annotations_seed0_configs.json
+data/davinci_003_outputs.json
