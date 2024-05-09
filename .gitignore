@@ -1,7 +1,9 @@
 __pycache__
 models
-logs
+wandb
 .env
+.gitignore
+logs/**
 data/alpaca_data_cleaned.json
 data/alpaca_data.json
 data/annotations_seed0_configs.json

@@ -6,6 +6,7 @@ import logging
 import io, json
 from config import PROMPT_FORMAT, IGNORE_ATTACK_SENTENCES, OTHER_DELM_FOR_TEST, OTHER_DELM_TOKENS, SPECIAL_DELM_TOKENS, DEFAULT_TOKENS, IGNORE_INDEX
 
+
 def format_with_other_delimiters(text, test=False):
     test_idx = - OTHER_DELM_FOR_TEST
     mark = np.random.choice(OTHER_DELM_TOKENS['mark'][test_idx:] if test else OTHER_DELM_TOKENS['mark'][:test_idx]) + ':'
@@ -136,6 +137,7 @@ def preprocess(sources, targets, tokenizer):
     for label, source_len in zip(labels, sources_tokenized["input_ids_lens"]):label[:source_len] = IGNORE_INDEX
     return dict(input_ids=input_ids, labels=labels)
 
+
 class SupervisedDataset(Dataset):
     def __init__(self, data_path: str, tokenizer, attack, downsample=True):
         super(SupervisedDataset, self).__init__() 
@@ -150,19 +152,16 @@ class SupervisedDataset(Dataset):
         else:
             attacks = re.findall('[A-Z][^A-Z]*', attacks)
             sources = []; targets = []
-            self.data_copy_count = len(attacks)
+            self.data_copy_count = len(attacks) + len(attacks) * downsample
+            
             for a in attacks:
                 if   a == 'Ignore':     source, target = generate_ignore_data(list_data_dict, prompt_dict_name)
                 elif a == 'Naive':      source, target = generate_naive_data(list_data_dict, prompt_dict_name)
                 elif a == 'Completion': source, target = generate_completion_data(list_data_dict, prompt_dict_name)
                 else: raise NotImplementedError
                 
-                if downsample:
-                    sources += source + source_clean; targets += target + targets_clean
-                    self.data_copy_count += 2
-                else:
-                    sources += source; targets += target
-                    self.data_copy_count += 1
+                sources += source; targets += target
+                if downsample: sources += source_clean; targets += targets_clean
                     
             # downsize data to original size with 50% clean data
             if downsample:

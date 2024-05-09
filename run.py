@@ -8,13 +8,13 @@ import re
 
 MODEL_CONFIG = {
     'llama-7b': {
-        'path': 'data/llama-7b',
+        'path': 'models/llama-7b',
         'data': 'data/alpaca_data_cleaned.json',
         'lr':   '2e-5',
         'epoch': 3
     },
     'mistral-7b': {
-        'path': 'data/Mistral-7B-v0.1',
+        'path': 'models/Mistral-7B-v0.1',
         'data': 'data/alpaca_data_cleaned.json',
         'lr':   '2.5e-6',
         'epoch': 3
@@ -25,11 +25,12 @@ def get_train_cmd(model, attack):
     master_port = 29550 + np.random.randint(0, 1000)
     current_t = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp()).strftime("%Y-%m-%d-%H-%M-%S")
     output_dir = f'models/{model}_{attack}_{current_t}'
+    path = MODEL_CONFIG[model]['path']
+    lr = MODEL_CONFIG[model]['lr']
+    data = MODEL_CONFIG[model]['data']
+    epoch = MODEL_CONFIG[model]['epoch']
+
     if model == 'llama-7b':
-        path = MODEL_CONFIG['llama-7b']['path']
-        lr = MODEL_CONFIG['llama-7b']['lr']
-        data = MODEL_CONFIG['llama-7b']['data']
-        epoch = MODEL_CONFIG['llama-7b']['epoch']
         return f'torchrun --nproc_per_node=4 --master_port={master_port} train.py \
             --model_name_or_path {path} \
             --data_path {data} \
@@ -52,10 +53,6 @@ def get_train_cmd(model, attack):
             --tf32 True\
             --attack {attack}'
     elif model == 'mistral-7b':
-        path = MODEL_CONFIG['mistral-7b']['path']
-        lr = MODEL_CONFIG['mistral-7b']['lr']
-        data = MODEL_CONFIG['mistral-7b']['data']
-        epoch = MODEL_CONFIG['mistral-7b']['epoch']
         return f'torchrun --nproc_per_node=4 --master_port={master_port} train.py \
             --model_name_or_path {path} \
             --window_size 256 \
@@ -92,11 +89,11 @@ def train_and_test():
     parser.add_argument('-e', '--env', type=str, default='struq')
     parser.add_argument('--do_test', type=bool, default=True)
     args = parser.parse_args()
-
+    
     output_dirs = []
-    for attack in args.train_attack: ### TODO: ???
+    for attack in args.train_attack:
         cmd = get_train_cmd(args.model, attack)
-        output_dir = re.search('--output_dir (.+?)--num_train_epochs', cmd).group(1)
+        output_dir = re.search(f'--output_dir (.+?)--num_train_epochs', cmd).group(1).replace(' ', '')
         log_dir = output_dir.replace('models', 'logs')
         os.makedirs(output_dir, exist_ok=True)
         os.makedirs(log_dir, exist_ok=True)
@@ -109,15 +106,16 @@ def train_and_test():
         os.remove(temporary_slurm_file)
         print('\n' * 10 + slurm_prefix + cmd + '\n' * 10)
         output_dirs.append(output_dir)
-        time.sleep(1)
-
+        time.sleep(2)
+    
     if not args.do_test: return
-    print("Submitted jobs, waiting for completion...")
+    print("Submitted all", len(output_dirs), "jobs, waiting for completion...")
     completed = []
 
     while len(completed) < len(output_dirs):
         for output_dir in [x for x in output_dirs if x not in completed]:
-            if not len(glob.glob(f'{output_dir}/*.index.json')): continue
+            if len(glob.glob(f'{output_dir}/*.json')) < 8: continue
+            time.sleep(30)
             print(f"Scheduling tests for {output_dir}, {1+len(completed)}/{len(output_dirs)}.")
             
             log_dir = output_dir.replace('models', 'logs')
@@ -125,13 +123,13 @@ def train_and_test():
 
             for attack in args.test_attack:
                 slurm_prefix = f"#!/bin/bash\n\n#SBATCH --nodes=1\n#SBATCH --time=0{args.time}:00:00\n#SBATCH --gres=gpu:1\n#SBATCH --cpus-per-task=16\n#SBATCH --output={log_dir}/{attack}_%j.out\n\nsource activate {args.env}\n"
-                cmd = f'python test.py --model_name_or_path {args.model_path} --attack {attack}'
+                cmd = f'python test.py --model_name_or_path {output_dir} --attack {attack}' # you may add --defense to test zero-shot prompting defense baselines
                 temporary_slurm_file = 'test_' + args.model + output_dir.replace('/', '_') + '.slurm'
                 with open(temporary_slurm_file, 'w') as f: f.write(slurm_prefix + cmd)
                 os.system('sbatch ' + temporary_slurm_file)
                 os.remove(temporary_slurm_file)
                 print('\n' * 10 + slurm_prefix + cmd + '\n' * 10)
-                time.sleep(1)
+                time.sleep(2)
             completed.append(output_dir)
         time.sleep(10)
 
