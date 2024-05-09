@@ -15,7 +15,7 @@
 
 # Training
 + The ```run.py``` script automatically train multiple models and test them by generating slurm scripts, run them, and delete them.
-+ ```nohup python -u run.py -m llama-7b -train TextTextText_None SpclSpclSpcl_NaiveCompletion -test none naive ignore completion_real > logs/run.log 2>&1 &``` stands for training the first model with three text delimiters (### instruction:) and None attack (undefended model), training the second model with three special delimiters ([MARK] [INST] [COLN]) and Naive+Completion attacks (StruQ-defended model), and test the two models on naive, ignore, completion_real attacks.
++ ```nohup python -u run.py -m llama-7b -train TextTextText_None SpclSpclSpcl_NaiveCompletion -test none naive ignore completion_real > run.log 2>&1 &``` stands for training the first model with three text delimiters (### instruction:) and None attack (undefended model), training the second model with three special delimiters ([MARK] [INST] [COLN]) and Naive+Completion attacks (StruQ-defended model), and test the two models on naive, ignore, completion_real attacks.
 + The whole training data size is always 52K, including 26K clean data. Each attack samples are uniformly and sampled.
 + Only data with input would be injected by the specified attack from another random training sample. Data without input is kept unchanged.
 
