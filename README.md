@@ -11,7 +11,7 @@
 + create the conda env by running ```conda create -n struq python==3.10```. If you use another env name, specify it in the ```-e``` arg of ```run.py```
 + install dependencies by running ```pip install -r requirements.txt```
 + install [alpaca_eval](https://github.com/tatsu-lab/alpaca_eval) for utility evaluation by running ```pip install alpaca-eval```
-+ [optional] Play with StruQ model: download [undefended alpaca](https://drive.google.com/drive/folders/1eeJ0MjK6KndRq_tJa1vOpHd85w_nUdyu?usp=sharing) and [StruQ-defended alpaca](https://drive.google.com/drive/folders/1eyV5-UMri8BH6uADhN7OPLKWYzND5Z_-?usp=sharing) to ```models/```, reproduce the utility evaluation by downloading the pre-saved GPT-4 judgement from AlpacaEval to data/[annotations_seed0_configs.json](https://drive.google.com/file/d/1-TQKGHTEYrIyB6awBv9moAOEHJ0E5E9w/view?usp=sharing).
++ [optional] Play with StruQ model: download [undefended alpaca](https://drive.google.com/drive/folders/1eeJ0MjK6KndRq_tJa1vOpHd85w_nUdyu?usp=sharing), [StruQ-defended alpaca](https://drive.google.com/drive/folders/1eyV5-UMri8BH6uADhN7OPLKWYzND5Z_-?usp=sharing), [undefended mistral](https://drive.google.com/drive/folders/1D2IRW-0FNwQVqYhYJ-9bRiD3xrIrhaS9?usp=sharing), and [StruQ-defended mistral](https://drive.google.com/drive/folders/1XSetm-g4lmY6XMretDxL8rp9XMyR8yNb?usp=sharing) to ```models/```, reproduce the utility evaluation by downloading the pre-saved GPT-4 judgement from AlpacaEval to data/[annotations_seed0_configs.json](https://drive.google.com/file/d/1-TQKGHTEYrIyB6awBv9moAOEHJ0E5E9w/view?usp=sharing).
 
 # Training
 + The ```run.py``` script automatically train multiple models and test them by generating slurm scripts, run them, and delete them.
