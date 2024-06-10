@@ -142,13 +142,13 @@ def completion_realcmb(d_item):
                                 DELIMITERS['TextTextText'][0] + '\n' + np.random.choice(IGNORE_ATTACK_SENTENCES['test']) + ' ' + TEST_INJECTED_PROMPT
     return d_item
 
-def completion_realchinese(d_item):
+def completion_real_chinese(d_item):
     d_item['input'] += '\n\n' + DELIMITERS['TextTextText'][2] + '\n' + d_item['output'][1:] + '\n\n' + \
                                 DELIMITERS['TextTextText'][0] + '\n' + TEST_INJECTED_PROMPT_CHINESE.capitalize()
     #d_item['input'] += DELIMITERS['SpclSpclSpcl'][2] + d_item['output'][1:] + DELIMITERS['SpclSpclSpcl'][0] + TEST_INJECTED_PROMPT.capitalize()
     return d_item
 
-def completion_realspanish(d_item):
+def completion_real_spanish(d_item):
     d_item['input'] += '\n\n' + DELIMITERS['TextTextText'][2] + '\n' + d_item['output'][1:] + '\n\n' + \
                                 DELIMITERS['TextTextText'][0] + '\n' + TEST_INJECTED_PROMPT_SPANISH.capitalize()
     #d_item['input'] += DELIMITERS['SpclSpclSpcl'][2] + d_item['output'][1:] + DELIMITERS['SpclSpclSpcl'][0] + TEST_INJECTED_PROMPT.capitalize()
@@ -281,7 +281,7 @@ def test():
             with open(log_dir + '/' + a + '-' + args.defense + '.csv', "w") as outfile:
                 writer = csv.writer(outfile)
                 writer.writerows([[llm_input[i], s[0], s[1]] for i, s in enumerate(outputs)])
-            summary_path = args.model_name_or_path.replace('models', 'logs') + '/summary.tsv'
+            summary_path = log_dir + '/summary.tsv'
             if not os.path.exists(summary_path):
                 with open(summary_path, "w") as outfile: outfile.write("attack\tasr\tdefense\n")
             with open(summary_path, "a") as outfile: outfile.write(f"{a}\t{asr}\t{args.defense}\n")
@@ -291,7 +291,7 @@ def test():
                 for i in range(len(data)):
                     assert data[i]['input'] in llm_input[i] and data[i]['instruction'] in llm_input[i]
                     if data[i]['input'] != '': data[i]['instruction'] += '\n\n' + data[i]['input']
-                    data[i]['output'] = outputs[i]
+                    data[i]['output'] = outputs[i][0]
                     data[i]['generator'] = args.model_name_or_path
                 jdump(data, benign_response_name)
             print('\nRunning AlpacaEval on', benign_response_name, '\n')

@@ -31,7 +31,7 @@ def get_train_cmd(model, attack):
     epoch = MODEL_CONFIG[model]['epoch']
 
     if model == 'llama-7b':
-        return f'torchrun --nproc_per_node=4 --master_port={master_port} train.py \
+        return f'python -m torch.distributed.run --nproc_per_node=4 --master_port={master_port} train.py \
             --model_name_or_path {path} \
             --data_path {data} \
             --bf16 True \
@@ -53,7 +53,7 @@ def get_train_cmd(model, attack):
             --tf32 True\
             --attack {attack}'
     elif model == 'mistral-7b':
-        return f'torchrun --nproc_per_node=4 --master_port={master_port} train.py \
+        return f'python -m torch.distributed.run --nproc_per_node=4 --master_port={master_port} train.py \
             --model_name_or_path {path} \
             --window_size 256 \
             --padding_side left \

@@ -4,7 +4,7 @@ from copy import deepcopy
 from torch.utils.data import Dataset
 import logging
 import io, json
-from config import PROMPT_FORMAT, IGNORE_ATTACK_SENTENCES, OTHER_DELM_FOR_TEST, OTHER_DELM_TOKENS, SPECIAL_DELM_TOKENS, DEFAULT_TOKENS, IGNORE_INDEX
+from config import PROMPT_FORMAT, IGNORE_ATTACK_SENTENCES, OTHER_DELM_FOR_TEST, OTHER_DELM_TOKENS, SPECIAL_DELM_TOKENS, DEFAULT_TOKENS, IGNORE_INDEX, TEXTUAL_DELM_TOKENS
 
 
 def format_with_other_delimiters(text, test=False):
@@ -28,6 +28,10 @@ def format_with_other_delimiters(text, test=False):
     text = text.replace(SPECIAL_DELM_TOKENS[0], mark.format(s=sample_delm('inst')))
     text = text.replace(SPECIAL_DELM_TOKENS[1], mark.format(s=sample_delm('inpt')))
     text = text.replace(SPECIAL_DELM_TOKENS[2], mark.format(s=sample_delm('resp')))
+    text = text.replace(TEXTUAL_DELM_TOKENS[0], mark.format(s=sample_delm('inst')))
+    text = text.replace(TEXTUAL_DELM_TOKENS[1], mark.format(s=sample_delm('inpt')))
+    text = text.replace(TEXTUAL_DELM_TOKENS[2], mark.format(s=sample_delm('resp')))
+    
     return text
 
 
