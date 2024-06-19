@@ -4,7 +4,7 @@ from copy import deepcopy
 from torch.utils.data import Dataset
 import logging
 import io, json
-from config import PROMPT_FORMAT, IGNORE_ATTACK_SENTENCES, OTHER_DELM_FOR_TEST, OTHER_DELM_TOKENS, SPECIAL_DELM_TOKENS, DEFAULT_TOKENS, IGNORE_INDEX, TEXTUAL_DELM_TOKENS
+from config import PROMPT_FORMAT, IGNORE_ATTACK_SENTENCES, OTHER_DELM_FOR_TEST, OTHER_DELM_TOKENS, SPECIAL_DELM_TOKENS, DEFAULT_TOKENS, IGNORE_INDEX, TEXTUAL_DELM_TOKENS, DELIMITERS
 
 
 def format_with_other_delimiters(text, test=False):
@@ -25,73 +25,47 @@ def format_with_other_delimiters(text, test=False):
         elif p < 2/3: return (role + delm).lower()
         else: return role + delm
     
-    text = text.replace(SPECIAL_DELM_TOKENS[0], mark.format(s=sample_delm('inst')))
-    text = text.replace(SPECIAL_DELM_TOKENS[1], mark.format(s=sample_delm('inpt')))
-    text = text.replace(SPECIAL_DELM_TOKENS[2], mark.format(s=sample_delm('resp')))
-    text = text.replace(TEXTUAL_DELM_TOKENS[0], mark.format(s=sample_delm('inst')))
-    text = text.replace(TEXTUAL_DELM_TOKENS[1], mark.format(s=sample_delm('inpt')))
-    text = text.replace(TEXTUAL_DELM_TOKENS[2], mark.format(s=sample_delm('resp')))
-    
+    for delm in DELIMITERS.values():
+        text = text.replace(delm[0], mark.format(s=sample_delm('inst')))
+        text = text.replace(delm[1], mark.format(s=sample_delm('inpt')))
+        text = text.replace(delm[2], mark.format(s=sample_delm('resp')))
     return text
 
-
-def generate_clean_data(data_dicts, prompt_dict_name):
+def generate_training_data(data_dicts, prompt_dict_name, attack):
     prompt_dict = PROMPT_FORMAT[prompt_dict_name]
-    return [
-        prompt_dict["prompt_input"].format_map(example) if example.get("input", "") != "" else prompt_dict["prompt_no_input"].format_map(example) for example in data_dicts
-    ], [f"{example['output']}{DEFAULT_TOKENS['eos_token']}" for example in data_dicts]
-
-def generate_ignore_data(data_dicts, prompt_dict_name):
-    prompt_dict = PROMPT_FORMAT[prompt_dict_name]
+    if attack == 'None':
+        return [
+            prompt_dict["prompt_input"].format_map(example) if example.get("input", "") != "" else prompt_dict["prompt_no_input"].format_map(example) for example in data_dicts
+        ], [f"{example['output']}{DEFAULT_TOKENS['eos_token']}" for example in data_dicts]
+    if attack == 'Completion':
+        ref_inst_resp = {}
+        for ref_sample in jload('data/alpaca_data.json'):  ref_inst_resp[ref_sample['instruction']] = ref_sample['output']
     sources = []
+
     for i in range(len(data_dicts)):
         # no anti-instruction tuning if there is no input
         if data_dicts[i].get("input", "") == "": sources.append(prompt_dict["prompt_no_input"].format_map(data_dicts[i]))
         else:
             injected_sample = np.random.choice(data_dicts) 
-            injected_prompt = ('answer the following question. ' + injected_sample['instruction'] + ' ' + injected_sample['input']) if injected_sample['instruction'][-1] == '?' else (injected_sample['instruction'][0].lower() + injected_sample['instruction'][1:] + ' ' + injected_sample['input'])
+            if injected_sample['instruction'][-1] == '?': 
+                injected_prompt = 'answer the following question. ' + injected_sample['instruction'] + ' ' + injected_sample['input']
+            else: 
+                injected_prompt = injected_sample['instruction'][0].lower() + injected_sample['instruction'][1:] + ' ' + injected_sample['input']
             
             data_dicts_item = deepcopy(data_dicts[i])
             if data_dicts_item['input'][-1] != '.': data_dicts_item['input'] += '.'
-            data_dicts_item['input'] += ' ' + np.random.choice(IGNORE_ATTACK_SENTENCES['train']) + ' ' + injected_prompt
-            sources.append(prompt_dict["prompt_input"].format_map(data_dicts_item))
-    return sources, [f"{example['output']}{DEFAULT_TOKENS['eos_token']}" for example in data_dicts]
+            if attack == 'Naive':
+                data_dicts_item['input'] += ' ' + injected_prompt[0].upper() + injected_prompt[1:]
+            elif attack == 'Ignore':
+                data_dicts_item['input'] += ' ' + np.random.choice(IGNORE_ATTACK_SENTENCES['train']) + ' ' + injected_prompt
+            elif attack == 'Completion':
+                data_dicts_item['input'] += '\n\n' + DELIMITERS['SpclSpclSpcl'][2] + '\n' + ref_inst_resp.get(data_dicts_item['instruction'], data_dicts_item['output']) + '\n\n' + \
+                                                     DELIMITERS['SpclSpclSpcl'][0] + '\n' + injected_prompt.capitalize()
+                if injected_sample['input'] != '':
+                    data_dicts_item['input'] += '\n\n' + DELIMITERS['SpclSpclSpcl'][1] + '\n' + injected_sample['input']
+                data_dicts_item['input'] = format_with_other_delimiters(data_dicts_item['input'], test=False)
+            else: raise NotImplementedError
 
-def generate_naive_data(data_dicts, prompt_dict_name):
-    prompt_dict = prompt_dict = PROMPT_FORMAT[prompt_dict_name]
-    sources = []
-    for i in range(len(data_dicts)):
-        # no anti-instruction tuning if there is no input
-        if data_dicts[i].get("input", "") == "": sources.append(prompt_dict["prompt_no_input"].format_map(data_dicts[i]))
-        else:
-            injected_sample = np.random.choice(data_dicts) 
-            injected_prompt = ('answer the following question. ' + injected_sample['instruction'] + ' ' + injected_sample['input']) if injected_sample['instruction'][-1] == '?' else (injected_sample['instruction'][0].lower() + injected_sample['instruction'][1:] + ' ' + injected_sample['input'])
-            
-            data_dicts_item = deepcopy(data_dicts[i])
-            if data_dicts_item['input'][-1] != '.': data_dicts_item['input'] += '.'
-            data_dicts_item['input'] += ' ' + injected_prompt[0].upper() + injected_prompt[1:]
-            sources.append(prompt_dict["prompt_input"].format_map(data_dicts_item))
-    return sources, [f"{example['output']}{DEFAULT_TOKENS['eos_token']}" for example in data_dicts]
-
-def generate_completion_data(data_dicts, prompt_dict_name):
-    prompt_dict = prompt_dict = PROMPT_FORMAT[prompt_dict_name]
-    sources = []
-    ref_inst_resp = {}
-    for ref_sample in jload('data/alpaca_data.json'): 
-        ref_inst_resp[ref_sample['instruction']] = ref_sample['output']
-    for i in range(len(data_dicts)):
-        # no anti-instruction tuning if there is no input
-        if data_dicts[i].get("input", "") == "": sources.append(prompt_dict["prompt_no_input"].format_map(data_dicts[i]))
-        else:
-            injected_sample = np.random.choice(data_dicts)
-            data_dicts_item = deepcopy(data_dicts[i])
-            if data_dicts_item['input'][-1] != '.': data_dicts_item['input'] += '.'
-            
-            injected_prompt_and_input = prompt_dict["prompt_input"].format_map(injected_sample) if injected_sample.get("input", "") != "" else prompt_dict["prompt_no_input"].format_map(injected_sample)
-            injected_prompt_and_input = injected_prompt_and_input[:injected_prompt_and_input.find(SPECIAL_DELM_TOKENS[2])][:-2]
-
-            data_dicts_item['input'] += ' ' + format_with_other_delimiters('\n\n' + SPECIAL_DELM_TOKENS[2] + ref_inst_resp.get(data_dicts_item['instruction'], data_dicts_item['output']) + '\n' + injected_prompt_and_input).replace('#', '').replace('::', ':').replace(prompt_dict["prompt_input"][:prompt_dict["prompt_input"].find('\n')], '').replace(prompt_dict["prompt_no_input"][:prompt_dict["prompt_no_input"].find('\n')], '')
-            
             sources.append(prompt_dict["prompt_input"].format_map(data_dicts_item))
     return sources, [f"{example['output']}{DEFAULT_TOKENS['eos_token']}" for example in data_dicts]
 
@@ -148,7 +122,7 @@ class SupervisedDataset(Dataset):
         logging.warning("Loading data...")
         list_data_dict = jload(data_path)
         prompt_dict_name, attacks = attack.split('_') 
-        source_clean, targets_clean = generate_clean_data(list_data_dict, prompt_dict_name)
+        source_clean, targets_clean = generate_training_data(list_data_dict, prompt_dict_name, 'None')
         
         if attacks == 'None': 
             sources, targets = source_clean, targets_clean
@@ -159,11 +133,7 @@ class SupervisedDataset(Dataset):
             self.data_copy_count = len(attacks) + len(attacks) * downsample
             
             for a in attacks:
-                if   a == 'Ignore':     source, target = generate_ignore_data(list_data_dict, prompt_dict_name)
-                elif a == 'Naive':      source, target = generate_naive_data(list_data_dict, prompt_dict_name)
-                elif a == 'Completion': source, target = generate_completion_data(list_data_dict, prompt_dict_name)
-                else: raise NotImplementedError
-                
+                source, target = generate_training_data(list_data_dict, prompt_dict_name, a)
                 sources += source; targets += target
                 if downsample: sources += source_clean; targets += targets_clean
                     
