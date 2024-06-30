@@ -364,6 +364,7 @@ class BaseAttack:
 
             if not passed:
                 logger.info("Attack succeeded! Early stopping...")
+                self._best_suffix = adv_suffix
                 break
             if self._num_queries >= self._max_queries > 0:
                 logger.info("Max queries reached! Finishing up...")
