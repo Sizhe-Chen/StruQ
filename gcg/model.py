@@ -213,7 +213,10 @@ class TransformersModel:
                 padding=True,
             ).input_ids.to(device)
             # Filter out suffixes that do not tokenize back to the same ids
-            filter_cond = torch.all(encoded[:, :orig_len] == suffix_ids, dim=1)
+            if self.tokenizer.padding_side == "left":
+                filter_cond = torch.all(encoded[:, -orig_len:] == suffix_ids, dim=1)
+            else:
+                filter_cond = torch.all(encoded[:, :orig_len] == suffix_ids, dim=1)
             # Count number of non-pad tokens
             # pad_token_id = self._tokenizer.pad_token_id
             # filter_cond = (encoded != pad_token_id).sum(1) == orig_len
