@@ -1,10 +1,12 @@
 import argparse
 import csv
+import dataclasses
 import logging
 import os
 from copy import deepcopy
 
 import fastchat
+import fastchat.conversation
 import numpy as np
 import torch
 import transformers
@@ -25,6 +27,51 @@ from gcg.utils import Message, Role, SuffixManager, get_nonascii_toks
 from struq import _tokenize_fn, jload
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class CustomConversation(fastchat.conversation.Conversation):
+    """Add StruQ Alpaca template. This is different from the default Alpaca template."""
+
+    def get_prompt(self) -> str:
+        """Get the prompt for generation."""
+        system_prompt = self.system_template.format(system_message=self.system_message)
+        seps = [self.sep, self.sep2]
+        ret = system_prompt + self.sep
+        for i, (role, message) in enumerate(self.messages):
+            if message:
+                ret += role + ":\n" + message + seps[i % 2]
+            else:
+                ret += role + ":\n"
+        return ret
+
+    def copy(self):
+        return CustomConversation(
+            name=self.name,
+            system_template=self.system_template,
+            system_message=self.system_message,
+            roles=self.roles,
+            messages=[[x, y] for x, y in self.messages],
+            offset=self.offset,
+            sep_style=self.sep_style,
+            sep=self.sep,
+            sep2=self.sep2,
+            stop_str=self.stop_str,
+            stop_token_ids=self.stop_token_ids,
+        )
+
+
+# Alpaca default template
+fastchat.conversation.register_conv_template(
+    CustomConversation(
+        name="struq_alpaca",
+        system_message=SYS_INPUT,
+        roles=("### instruction", "### response"),
+        sep_style=fastchat.conversation.SeparatorStyle.ROBIN,
+        sep="\n\n",
+        sep2="</s>",
+    )
+)
 
 
 def load_model_and_tokenizer(model_path, tokenizer_path=None, device="cuda:0", **kwargs):
@@ -63,7 +110,7 @@ def test_model_output(llm_input, model, tokenizer):
     model.generation_config.max_new_tokens = 512
     attack_success = 0
     outputs = []
-    for _, inpt in enumerate(llm_input):
+    for inpt in llm_input:
         input_ids = _tokenize_fn([inpt], tokenizer)["input_ids"][0].unsqueeze(0)
         response = tokenizer.decode(
             model.generate(
@@ -94,7 +141,7 @@ def form_llm_input(
     defense,
 ):
     llm_input = []
-    for i, d in enumerate(data):
+    for sample_id, d in data:
         if d["input"] == "":
             continue
 
@@ -102,7 +149,7 @@ def form_llm_input(
         if d_item["input"][-1] != "." and d_item["input"][-1] != "!" and d_item["input"][-1] != "?":
             d_item["input"] += "."
         d_item["input"] += " "
-        d_item["id"] = i
+        d_item["id"] = sample_id
         d_item = injection_method(d_item)
 
         if apply_defensive_filter:
@@ -151,10 +198,10 @@ def form_llm_input(
         elif defense == "incontext":
             number_of_demonstrations = 1
             for _ in range(number_of_demonstrations):
-                d_item_demo = np.random.choice(data)
+                d_item_demo = np.random.choice(data)[1]
                 while d_item_demo["input"] == "" or d_item_demo["input"] == d_item["input"]:
-                    d_item_demo = np.random.choice(data)
-                d_item_demo["input"] += " " + np.random.choice(data)["instruction"]
+                    d_item_demo = np.random.choice(data)[1]
+                d_item_demo["input"] += " " + np.random.choice(data)[1]["instruction"]
                 llm_input_i = (
                     prompt_format["prompt_input"].format_map(d_item_demo)
                     + d_item_demo["output"][2:]
@@ -193,7 +240,7 @@ def gcg(d_item, model, tokenizer, model_name, data_delm, resp_delm):
     cfg.log_dir = f"./logs/{model_name}"
     cfg.sample_name = str(d_item["id"])
 
-    conv_template = fastchat.conversation.get_conv_template("alpaca")
+    conv_template = fastchat.conversation.get_conv_template("struq_alpaca")
     suffix_manager = SuffixManager(
         tokenizer=tokenizer,
         use_system_instructions=False,
@@ -257,8 +304,8 @@ def test(args):
         )
 
     # Select specified sample ids
-    if args.sample_ids is not None:
-        data = [data[i] for i in args.sample_ids]
+    sample_ids = list(range(len(data))) if args.sample_ids is None else args.sample_ids
+    data = [(i, data[i]) for i in sample_ids]
 
     logger.info("Running GCG attack on %d samples", len(data))
     llm_input = form_llm_input(

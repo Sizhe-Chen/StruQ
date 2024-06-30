@@ -114,7 +114,7 @@ class SuffixManager:
         "completion",
         "raw",
         "tinyllama",
-        "alpaca",
+        "struq_alpaca",
     )
 
     def __init__(self, *, tokenizer, use_system_instructions, conv_template):
@@ -150,7 +150,7 @@ class SuffixManager:
             # self.num_tok_sep because sep is just "".
             # https://github.com/lm-sys/FastChat/blob/main/fastchat/conversation.py#L167
             self.num_tok_sep = 1
-        elif self.conv_template.name == "alpaca":
+        elif self.conv_template.name == "struq_alpaca":
             # Somehow "\n\n" sep in Alpaca is tokenized to 3 tokens instead of 2.
             # This requires a manual fix here.
             self.num_tok_sep = 2
