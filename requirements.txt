@@ -4,6 +4,9 @@ wandb
 accelerate
 sentencepiece
 pandas
+ml_collections
+jaxtyping
+fschat
 transformers>=4.28.1
 torch==2.1.0
 tokenizers>=0.13.3
