@@ -9,8 +9,8 @@
 
 ## Environment
 ### Packages
-+ clone this repo and ```cd SecAlign```
-+ create the conda env by running ```conda create -n secalign python==3.10```. If you use another env name, specify it in the ```-e``` in ```run.py```
++ clone this repo and ```cd StruQ```
++ create the conda env by running ```conda create -n struq python==3.10```. If you use another env name, specify it in the ```-e``` in ```run.py```
 + install dependencies by running ```pip install -r requirements.txt```
 ### Data
 + data/[alpaca_data_clean.json](https://github.com/gururise/AlpacaDataCleaned/blob/main/alpaca_data_cleaned.json): training set
