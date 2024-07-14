@@ -82,7 +82,7 @@ def test_gcg(args):
     cfg.allow_non_ascii = False
     cfg.batch_size = 512  # Number of candidates to evaluate in each step
     # NOTE: Reduce mini_batch_size if OOM
-    cfg.mini_batch_size = 128 #256  # -1 for full batch (config.batch_size)
+    cfg.mini_batch_size = 64 #256  # -1 for full batch (config.batch_size)
     cfg.seq_len = 50  # Max sequence length for computing loss
     cfg.loss_temperature = 1.0  # Temperature for computing loss
     cfg.max_queries = -1  # Max number of queries (default: -1 for no limit)
@@ -153,7 +153,7 @@ def test_gcg(args):
 
     os.makedirs(log_dir, exist_ok=True)
     print(
-        f"\nGCG success rate {in_response} / {begin_with} (in-response / begin_with) on {model_name}, delimiters {frontend_delimiters}, "
+        f"\nGCG success rate {in_response} / {begin_with} (in-response / begin_with) on {args.model_name_or_path}, delimiters {frontend_delimiters}, "
         f"training-attacks {training_attacks}, zero-shot defense {args.defense}\n"
     )
     with open(log_dir + "/gcg-" + args.defense + ".csv", "w", encoding="utf-8") as outfile:
