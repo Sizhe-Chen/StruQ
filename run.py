@@ -84,7 +84,7 @@ def train_and_test():
     parser = argparse.ArgumentParser(prog='Training model(s) accepting structured queries on 4 80GB A100s', description='The script implements the slurm pipeline for training multiple defended models and later testing them with multiple attacks.')
     parser.add_argument('-m', '--model', type=str, default='llama-7b', choices=MODEL_CONFIG.keys())
     parser.add_argument('-train', '--train_attack', type=str, default=['SpclSpclSpcl_NaiveCompletion'], nargs='+')
-    parser.add_argument('-test', '--test_attack', type=str, default=['none', 'naive', 'ignore', 'escape_deletion', 'escape_separation', 'completion_other', 'completion_othercmb', 'completion_real', 'completion_realcmb', 'completion_close_2hash', 'completion_close_1hash', 'completion_close_0hash', 'completion_close_upper', 'completion_close_title', 'completion_close_nospace', 'completion_close_nocolon', 'completion_close_typo', 'completion_close_similar', 'hackaprompt'], nargs='+') # Use test_tap to test TAP attack
+    parser.add_argument('-test', '--test_attack', type=str, default=['none', 'naive', 'ignore', 'escape_deletion', 'escape_separation', 'completion_other', 'completion_othercmb', 'completion_real', 'completion_realcmb', 'completion_close_2hash', 'completion_close_1hash', 'completion_close_0hash', 'completion_close_upper', 'completion_close_title', 'completion_close_nospace', 'completion_close_nocolon', 'completion_close_typo', 'completion_close_similar', 'hackaprompt'], nargs='+') # Use test_gcg.py to test the strongest GCG attack
     parser.add_argument('-t', '--time', type=float, default=4)
     parser.add_argument('-e', '--env', type=str, default='struq')
     parser.add_argument('--do_test', type=bool, default=True)
