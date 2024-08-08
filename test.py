@@ -149,7 +149,7 @@ def completion_real(d_item):
 def completion_realcmb(d_item):
     char = ('\n' if np.random.rand() < 0.5 else '\t') * np.random.choice(range(10))
     d_item['input'] += '\n\n' + DELIMITERS['TextTextText'][2] + '\n' + d_item['output'][1:] + '\n' + char + '\n' + \
-                                DELIMITERS['TextTextText'][0] + '\n' + np.random.choice(IGNORE_ATTACK_SENTENCES['test']) + ' ' + TEST_INJECTED_PROMPT
+                                DELIMITERS['TextTextText'][0] + '\n' + np.random.choice(IGNORE_ATTACK_SENTENCES['test']).format(injected_prompt=TEST_INJECTED_PROMPT)
     return d_item
 
 def completion_real_chinese(d_item):
