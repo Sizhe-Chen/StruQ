@@ -22,7 +22,10 @@
 ### Undefended SFT LLMs (optional)
 + models/[llama-7b_TextTextText_None_2024-02-01-00-00-00](https://drive.google.com/drive/folders/1eeJ0MjK6KndRq_tJa1vOpHd85w_nUdyu?usp=sharing)
 + models/[mistral-7b_TextTextText_None_2024-02-01-00-00-00](https://drive.google.com/drive/folders/1D2IRW-0FNwQVqYhYJ-9bRiD3xrIrhaS9?usp=sharing)
-+ All models can be downloaded at once by installing `gdown` and then run the following commands:
+### StruQ LLMs (optional)
++ models/[llama-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00](https://drive.google.com/drive/folders/1eyV5-UMri8BH6uADhN7OPLKWYzND5Z_-?usp=sharing)
++ models/[mistral-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00](https://drive.google.com/drive/folders/1XSetm-g4lmY6XMretDxL8rp9XMyR8yNb?usp=sharing)
+### Script for downloading
 ```bash
 pip install gdown
 mkdir models
@@ -41,5 +44,6 @@ mv llama-7b* mistral* models/
 
 + Running ```run.py``` should trigger the testing (on utility and security) at the end when the model is saved.
 + Run only testing by ```python test.py -m models/llama-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00 -a none naive ignore completion_real```,
++ Run GCG testing by ```python test_gcg.py -m models/llama-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00 --sample_ids 0 1 2```. Leaving --sample_ids to default None runs all samples.
 + All training and testing logs are saved to, e.g., ```logs/llama-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00```.
 + Note that the attack success rate (asr) numbers from the code are higher than the actual asr, which should be calculated after manually removing false positive samples.
