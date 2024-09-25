@@ -2,7 +2,7 @@
 
 ## Decription
 
-+ The code is the official implementation of [StruQ: Defending Against Prompt Injection with Structured Queries](https://arxiv.org/abs/2402.06363).
++ The code is the official implementation of the USENIX Security'25 paper [StruQ: Defending Against Prompt Injection with Structured Queries](https://arxiv.org/abs/2402.06363).
 + The training requires 4 GPUs, and the testing requires 1 GPU. The code has been tested on 80GB A100s on a slurm cluster.
 + Part of this repo comes from [Alpaca](https://github.com/tatsu-lab/stanford_alpaca).
 + This repo is under CC BY-NC 4.0 License.
