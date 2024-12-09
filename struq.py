@@ -31,12 +31,12 @@ def format_with_other_delimiters(text, test=False):
         text = text.replace(delm[2], mark.format(s=sample_delm('resp')))
     return text
 
-def generate_training_data(data_dicts, prompt_dict_name, attack):
+def generate_training_data(data_dicts, prompt_dict_name, attack, tokenizer):
     prompt_dict = PROMPT_FORMAT[prompt_dict_name]
     if attack == 'None':
         return [
             prompt_dict["prompt_input"].format_map(example) if example.get("input", "") != "" else prompt_dict["prompt_no_input"].format_map(example) for example in data_dicts
-        ], [f"{example['output']}{DEFAULT_TOKENS['eos_token']}" for example in data_dicts]
+        ], [f"{example['output']}{tokenizer.eos_token}" for example in data_dicts]
     if attack == 'Completion':
         ref_inst_resp = {}
         for ref_sample in jload('data/alpaca_data.json'):  ref_inst_resp[ref_sample['instruction']] = ref_sample['output']
@@ -46,7 +46,8 @@ def generate_training_data(data_dicts, prompt_dict_name, attack):
         # no anti-instruction tuning if there is no input
         if data_dicts[i].get("input", "") == "": sources.append(prompt_dict["prompt_no_input"].format_map(data_dicts[i]))
         else:
-            injected_sample = np.random.choice(data_dicts) 
+            injected_sample = deepcopy(np.random.choice(data_dicts)) 
+            injected_sample['instruction'] = injected_sample['instruction']
             if injected_sample['instruction'][-1] == '?': 
                 injected_prompt = 'answer the following question. ' + injected_sample['instruction'] + ' ' + injected_sample['input']
             else: 
@@ -67,7 +68,7 @@ def generate_training_data(data_dicts, prompt_dict_name, attack):
             else: raise NotImplementedError
 
             sources.append(prompt_dict["prompt_input"].format_map(data_dicts_item))
-    return sources, [f"{example['output']}{DEFAULT_TOKENS['eos_token']}" for example in data_dicts]
+    return sources, [f"{example['output']}{tokenizer.eos_token}" for example in data_dicts]
 
 
 def jload(f, mode="r"):
@@ -121,8 +122,8 @@ class SupervisedDataset(Dataset):
         super(SupervisedDataset, self).__init__() 
         logging.warning("Loading data...")
         list_data_dict = jload(data_path)
-        prompt_dict_name, attacks = attack.split('_') 
-        source_clean, targets_clean = generate_training_data(list_data_dict, prompt_dict_name, 'None')
+        prompt_dict_name, attacks = attack.split('_')
+        source_clean, targets_clean = generate_training_data(list_data_dict, prompt_dict_name, 'None', tokenizer)
         
         if attacks == 'None': 
             sources, targets = source_clean, targets_clean
@@ -133,7 +134,7 @@ class SupervisedDataset(Dataset):
             self.data_copy_count = len(attacks) + len(attacks) * downsample
             
             for a in attacks:
-                source, target = generate_training_data(list_data_dict, prompt_dict_name, a)
+                source, target = generate_training_data(list_data_dict, prompt_dict_name, a, tokenizer)
                 sources += source; targets += target
                 if downsample: sources += source_clean; targets += targets_clean
                     

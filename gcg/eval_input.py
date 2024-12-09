@@ -21,6 +21,7 @@ class EvalInput:
     loss_slice: slice | None = None
     suffix_ids: SuffixIds | None = None
     target_ids: TargetIds | None = None
+    
 
     def __post_init__(self):
         self.check_props()
@@ -71,6 +72,7 @@ class EvalInput:
         assert suffix_ids.ndim in (1, 2)
         suffix_len = suffix_ids.shape[-1]
         num_optim_tokens = optim_slice.stop - optim_slice.start
+        #print(suffix_len, num_optim_tokens)
         if suffix_len != num_optim_tokens:
             raise LengthMismatchError(
                 f"Length of given suffix_ids ({suffix_len}) does not match "

@@ -90,7 +90,7 @@ class BaseAttack:
         self._not_allowed_tokens = not_allowed_tokens.to(self._device)
         self._tokenizer = tokenizer
         self._suffix_manager = suffix_manager
-        self._log_file: Path = self._setup_log_file(config)
+        self._setup_log_file(config)
 
         # Runtime variables
         self._start_time = None
@@ -109,10 +109,10 @@ class BaseAttack:
         log_dir = Path(config.log_dir) / self.name / atk_name
         logger.info("Logging to %s", log_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / f"{config.sample_name}.jsonl"
+        log_file = log_dir / f"{config.sample_id}.jsonl"
         # Delete log file if it exists
         log_file.unlink(missing_ok=True)
-        return log_file
+        self._log_file = log_file
 
     def _get_name_tokens(self) -> list[str]:
         """Create a name for this attack based on its parameters."""
@@ -211,6 +211,7 @@ class BaseAttack:
             suffix_ids=adv_suffix_ids, skipped_suffixes=skipped_suffixes
         )
         num_valid = is_valid.int().sum().item()
+        adv_suffix_ids_with_invalid = adv_suffix_ids
         adv_suffix_ids = adv_suffix_ids[is_valid]
         orig_len = adv_suffix_ids.shape[1]
         batch_size = self._batch_size
@@ -224,7 +225,7 @@ class BaseAttack:
                 device=adv_suffix_ids.device,
             )
             adv_suffix_ids = torch.cat([adv_suffix_ids, batch_pad], dim=0)
-            logger.debug("%.3f of suffixes are invalid", 1 - num_valid / batch_size)
+            logger.debug("%.3f of suffixes are invalid: %s", 1 - num_valid / batch_size, self._tokenizer.decode(adv_suffix_ids_with_invalid[-1]))
         else:
             # We have more valid samples than the desired batch size
             num_valid = batch_size
@@ -281,10 +282,9 @@ class BaseAttack:
         logger.debug("Starting attack with suffix: %s", adv_suffix)
         assert adv_suffix_ids.ndim == 1, adv_suffix_ids.shape
         logger.debug(
-            "\nInitialized suffix (%d tokens):\n%s\n%s",
+            "\nInitialized suffix (%d tokens):\n%s",
             len(adv_suffix_ids),
             adv_suffix,
-            adv_suffix_ids,
         )
 
         # =============== Prepare inputs and determine slices ================ #
@@ -344,19 +344,20 @@ class BaseAttack:
             self._save_best(current_loss, adv_suffix)
             self._visited_suffixes.add(adv_suffix)
 
-            if i % self._log_freq == 0:
+            if (i+1) % self._log_freq == 0 or i == 0:
                 # Logging
                 self._num_queries += 1
-                result = self._eval_func(adv_suffix)
-                passed = result[0] == 0
+                result = self._eval_func(adv_suffix, messages)
+                passed = result[1] == 0
                 self.log(
                     log_dict={
                         "loss": current_loss,
                         "best_loss": self._best_loss,
-                        "passed": passed,
+                        "success_begin_with": result[1] == 1,
+                        "success_in_response": result[0] == 1,
                         "suffix": adv_suffix,
-                        "generated": result[1][0][0],  # last message
-                        "num_cands": adv_suffix_ids.shape[0],
+                        "generated": result[2][0][0],  # last message
+                        #"num_cands": adv_suffix_ids.shape[0], 
                     },
                 )
             del token_grads, dynamic_input_ids
@@ -387,12 +388,23 @@ class BaseAttack:
         self._step += 1
         return attack_result
 
+    def format(self, d, tab=0):
+        s = ['{\n']
+        for k,v in d.items():
+            if isinstance(v, dict): v = format(v, tab+1)
+            else: v = repr(v)
+            s.append('%s%r: %s,\n' % ('  '*tab, k, v))
+        s.append('%s}' % ('  '*tab))
+        return ''.join(s)
+
     def log(self, step: int | None = None, log_dict: dict[str, Any] | None = None) -> None:
         """Log data using logger from a single step."""
         step = step or self._step
         log_dict["mem"] = torch.cuda.max_memory_allocated() / 1e9
-        log_dict["time_per_step"] = (time.time() - self._start_time) / (step + 1)
+        log_dict["time_per_step_s"] = (time.time() - self._start_time) / (step + 1)
         log_dict["queries"] = self._num_queries
+        log_dict["time_min"] = (time.time() - self._start_time) / 60
+        log_dict['sample_id'] = str(self._log_file).split('/')[-1].split('.')[0]
         message = ""
         for key, value in log_dict.items():
             if "loss" in key:
@@ -405,7 +417,7 @@ class BaseAttack:
             elif key == "time_per_step":
                 value = f"{value:.2f}s"
             message += f"{key}={value}, "
-        logger.info("[step: %4d/%4d] %s", step, self._num_steps, message)
+        logger.info("[step: %4d/%4d] %s", step, self._num_steps, self.format(log_dict, 2))
         log_dict["step"] = step
 
         # Convert all tensor values to lists or floats

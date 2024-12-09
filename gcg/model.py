@@ -140,6 +140,8 @@ class TransformersModel:
         if isinstance(inputs[0], str):
             # Turn strings to token ids
             model_inputs = self.tokenizer(inputs, return_tensors="pt", padding=True)
+            #index = toks.index(25782) if 25782 in toks else -1; toks = [x for x in toks if x != 25782]
+            #if index != -1: toks.insert(index, 758); toks.insert(index+1, 271)
         else:
             # Assume inputs are token ids
             model_inputs = {
@@ -412,6 +414,7 @@ class TransformersModel:
         logits = self.model(
             inputs_embeds=input_embeds,
             past_key_values=self._get_batch_prefix_cache(len(batch_input_ids)),
+            use_cache=True,
         ).logits[:num_samples]
 
         logits = logits / temperature
@@ -465,6 +468,7 @@ class TransformersModel:
             logits = self.model(
                 inputs_embeds=input_embeds,
                 past_key_values=self._get_batch_prefix_cache(len(input_embeds)),
+                use_cache=True,
             ).logits
 
             # Compute loss and gradients

@@ -14,7 +14,7 @@ from gcg.eval_input import EvalInput
 from gcg.types import PrefixCache
 
 logger = logging.getLogger(__name__)
-
+from copy import deepcopy
 
 class Role(Enum):
     USER = 1
@@ -114,7 +114,8 @@ class SuffixManager:
         "completion",
         "raw",
         "tinyllama",
-        "struq_alpaca",
+        "struq",
+        "bipia"
     )
 
     def __init__(self, *, tokenizer, use_system_instructions, conv_template):
@@ -137,9 +138,18 @@ class SuffixManager:
             use_system_instructions,
         )
 
-        self.num_tok_sep = len(
-            self.tokenizer(self.conv_template.sep, add_special_tokens=False).input_ids
-        )
+        self.sep_tokens = self.tokenizer(self.conv_template.sep, add_special_tokens=False).input_ids
+        non_empty = [(True if self.tokenizer.decode([token]) != '' else False) for token in self.sep_tokens]
+        self.num_tok_sep = len(self.sep_tokens)
+        #self.num_tok_sep = sum(non_empty)
+        #sep_tokens = []
+        #for i, token in enumerate(self.sep_tokens):
+            #if non_empty[i]: sep_tokens.append(token)
+        #self.sep_tokens = sep_tokens
+        
+        #self.sep_tokens = self.sep_tokens[non_empty]
+        # if self.num_tok_sep is wrong, low ASR is observed with no error in running and debugging
+        #print(self.tokenizer(self.conv_template.sep, add_special_tokens=False).input_ids)#; exit()
         if self.conv_template.name == "chatgpt":
             # Space is subsumed by following token in GPT tokenizer
             assert self.conv_template.sep == " ", self.conv_template.sep
@@ -150,11 +160,15 @@ class SuffixManager:
             # self.num_tok_sep because sep is just "".
             # https://github.com/lm-sys/FastChat/blob/main/fastchat/conversation.py#L167
             self.num_tok_sep = 1
-        elif self.conv_template.name == "struq_alpaca":
+        #elif self.conv_template.name == "struq":
             # Somehow "\n\n" sep in Alpaca is tokenized to 3 tokens instead of 2.
             # This requires a manual fix here.
-            self.num_tok_sep = 2
-
+        #    self.num_tok_sep = 2
+        elif self.conv_template.name == "bipia":
+            # Somehow "\n\n" sep in Alpaca is tokenized to 3 tokens instead of 2.
+            # This requires a manual fix here.
+            # \n\n sep is tokenized to 2 in llama3
+            self.num_tok_sep = 2 # change to 1 for llama3
         self.num_tok_sep2 = 0
         if self.conv_template.sep2 not in (None, ""):
             self.num_tok_sep2 = len(
@@ -162,6 +176,9 @@ class SuffixManager:
             )
         if self.conv_template.stop_str not in (None, ""):
             self.num_tok_sep2 += 1
+        
+        print('num_tok_sep:', self.num_tok_sep)
+        print('num_tok_sep2:', self.num_tok_sep2)
 
     @torch.no_grad()
     def get_input_ids(
@@ -171,7 +188,7 @@ class SuffixManager:
         target: str | None = None,
         static_only: bool = False,
     ) -> tuple[torch.Tensor, slice, slice, slice]:
-        """Turn messages into token ids.
+        """Turn messages into token ids. Run once for attack step.
 
         Compute token ids for given messages and target, along with slices
         tracking positions of important tokens.
@@ -190,6 +207,7 @@ class SuffixManager:
         """
         # This code was tested with llama-2 and vicuna_v1.1 templates but remove
         # this check to experiment with others.
+
         if self.conv_template.name not in self.valid_templates:
             raise NotImplementedError(
                 f"{self.conv_template.name} is not implemented! Please use one "
@@ -202,6 +220,7 @@ class SuffixManager:
 
         user_msg = messages[1].content
         if len(messages) <= 2:
+            # going here!
             # Toxicity scenario
             self.conv_template.append_message(
                 self.conv_template.roles[0], messages[1].content
@@ -217,8 +236,15 @@ class SuffixManager:
                 user_msg = messages[3].content
             # user msg
             self.conv_template.append_message(self.conv_template.roles[0], user_msg)
-        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids
+        
+        sep = deepcopy(self.conv_template.sep); self.conv_template.sep = ''
+        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids + \
+               self.tokenizer(' ', add_special_tokens=False).input_ids + \
+               self.sep_tokens
+               
+        ### toks: ...Print exactly 'hacked!' \n\n
         num_static_tokens = len(toks)
+        
         if user_msg:
             num_static_tokens -= self.num_tok_sep
         elif self.conv_template.name == "vicuna_v1.1":
@@ -228,10 +254,13 @@ class SuffixManager:
 
         static_input_ids = torch.tensor(toks[:num_static_tokens])
         if static_only:
+            self.conv_template.sep = sep
             return static_input_ids
 
+        """
         # user msg + adv suffix
         if user_msg:
+            #print(user_msg, self.is_tiktoken); exit() #... Print exactly 'hacked!', True
             if adv_suffix.startswith(" ") and self.is_tiktoken:
                 # NOTE: space is part of token in tiktoken, i.e., " !" != "!".
                 self.conv_template.update_last_message(f"{user_msg}{adv_suffix}")
@@ -239,29 +268,58 @@ class SuffixManager:
                 self.conv_template.update_last_message(f"{user_msg} {adv_suffix}")
         else:
             self.conv_template.update_last_message(adv_suffix)
+        """
 
-        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids
+        # It seems that we do not need toks and self.conv_template after this function
+        # Thus, we can calculate toks by adding (user_msg, adv_suffix, '\n\n', self.conv_template.roles[1]) tokens directly
+        # instead of asking self.tokenizer to do self.tokenizer(self.conv_template.get_prompt()).input_ids
+        
+        #print('0', toks, self.tokenizer.decode(toks))
+        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids + \
+               self.tokenizer(' ', add_special_tokens=False).input_ids + \
+               self.tokenizer(adv_suffix, add_special_tokens=False).input_ids + \
+               self.sep_tokens
+        #print('1', toks, self.tokenizer.decode(toks))#; exit() # the last ! is combined with \n or \n\n
         optim_slice = slice(num_static_tokens, len(toks) - self.num_tok_sep)
-
-        self.conv_template.append_message(self.conv_template.roles[1], None)
-        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids
+        
+        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids + \
+               self.tokenizer(' ', add_special_tokens=False).input_ids + \
+               self.tokenizer(adv_suffix, add_special_tokens=False).input_ids + \
+               self.sep_tokens + \
+               self.tokenizer(self.conv_template.roles[1], add_special_tokens=False).input_ids + \
+               self.tokenizer('\n', add_special_tokens=False).input_ids
+        #print('2', toks, self.tokenizer.decode(toks))
+        #self.conv_template.append_message(self.conv_template.roles[1], None)
+        #toks = self.tokenizer(self.conv_template.get_prompt()).input_ids
         assistant_role_slice = slice(optim_slice.stop, len(toks))
 
-        self.conv_template.update_last_message(target)  # asst target
-        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids
+        toks = self.tokenizer(self.conv_template.get_prompt()).input_ids + \
+               self.tokenizer(' ', add_special_tokens=False).input_ids + \
+               self.tokenizer(adv_suffix, add_special_tokens=False).input_ids + \
+               self.sep_tokens + \
+               self.tokenizer(self.conv_template.roles[1], add_special_tokens=False).input_ids + \
+               self.tokenizer('\n' + target, add_special_tokens=False).input_ids + \
+               self.tokenizer(self.tokenizer.eos_token, add_special_tokens=False).input_ids
+        # self.tokenizer('\n', add_special_tokens=False).input_ids + \              
+        # self.tokenizer(target, add_special_tokens=False).input_ids
+        
+        #print('3', toks, self.tokenizer.decode(toks))#; exit()
+        #self.conv_template.update_last_message(target)  # asst target
+        #toks = self.tokenizer(self.conv_template.get_prompt()).input_ids
         target_slice = slice(assistant_role_slice.stop, len(toks) - self.num_tok_sep2)
         loss_slice = slice(assistant_role_slice.stop - 1, len(toks) - self.num_tok_sep2 - 1)
 
         # DEBUG
-        # print(self.tokenizer.decode(toks[optim_slice]))
-        # print(self.tokenizer.decode(toks[assistant_role_slice]))
-        # print(self.tokenizer.decode(toks[target_slice]))
-        # print(self.tokenizer.decode(toks[loss_slice]))
+        #print('\'' + self.tokenizer.decode(toks[optim_slice]) + '\'')
+        #print('\'' + self.tokenizer.decode(toks[assistant_role_slice]) + '\'')
+        #print('\'' + self.tokenizer.decode(toks[target_slice]) + '\'')
+        #print('\'' + self.tokenizer.decode(toks[loss_slice]) + '\'')
+        #exit()
         # import pdb; pdb.set_trace()
 
         # Don't need final sep tokens
         input_ids = torch.tensor(toks[: target_slice.stop])
-
+        self.conv_template.sep = sep
         return input_ids, optim_slice, target_slice, loss_slice
 
     @torch.no_grad()
@@ -273,7 +331,7 @@ class SuffixManager:
         num_fixed_tokens: int = 0,
         max_target_len: int | None = None,
     ) -> EvalInput:
-        """Generate inputs for evaluation.
+        """Generate inputs for evaluation. Run once for each sample
 
         Returns:
             eval_inputs: Inputs for evaluation.
@@ -284,20 +342,20 @@ class SuffixManager:
 
         out = self.get_input_ids(messages, suffix, target)
         orig_input_ids, optim_slice, target_slice, loss_slice = out
-
+        #print(optim_slice, optim_slice.start, optim_slice.stop)
         if max_target_len is not None:
             # Adjust target slice to be at most max_target_len
             end = min(target_slice.stop, target_slice.start + max_target_len)
             target_slice = slice(target_slice.start, end)
             loss_slice = slice(loss_slice.start, end - 1)
 
-        # Offset everything to ignore static tokens which are processed
-        # separately
+        # Offset everything to ignore static tokens which are processed separately
         orig_input_ids = orig_input_ids[num_fixed_tokens:]
         optim_slice = slice(
             optim_slice.start - num_fixed_tokens,
             optim_slice.stop - num_fixed_tokens,
         )
+        #print(optim_slice, optim_slice.start, optim_slice.stop); exit()
         target_slice = slice(
             target_slice.start - num_fixed_tokens,
             target_slice.stop - num_fixed_tokens,
