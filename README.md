@@ -8,7 +8,8 @@ Recent advances in Large Language Models (LLMs) enable exciting LLM-integrated a
 We introduce structured queries, a general approach to tackle this problem. Structured queries separate prompts and data into two channels. We implement a system that supports structured queries. This system is made of (1) a secure front-end that formats a prompt and user data into a special format, and (2) a specially trained LLM that can produce highquality outputs from these inputs. The LLM is trained using a novel fine-tuning strategy: we convert a base (non-instructiontuned) LLM to a structured instruction-tuned model that will only follow instructions in the prompt portion of a query. To do so, we augment standard instruction tuning datasets with examples that also include instructions in the data portion of the query, and fine-tune the model to ignore these. Our system significantly improves resistance to prompt injection attacks, with little or no impact on utility.
 
 # Environment
-+ The training requires 4 GPUs, and the testing requires 1 GPU. The code has been tested on 80GB A100s on a slurm cluster. Part of this repo comes from [Alpaca](https://github.com/tatsu-lab/stanford_alpaca).
++ A more flexible and powerful implementation that is actively maintained is available [here](https://github.com/facebookresearch/SecAlign). Part of this repo comes from [Alpaca](https://github.com/tatsu-lab/stanford_alpaca).
++ The training requires 4 GPUs, and the testing requires 1 GPU. The code has been tested on 80GB A100s on a slurm cluster. 
 + Install environment dependencies
 > git clone https://github.com/Sizhe-Chen/StruQ \
 > cd StruQ \
