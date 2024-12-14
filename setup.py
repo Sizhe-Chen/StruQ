@@ -25,11 +25,17 @@ for data_url in data_urls:
 
 # Download model dependencies
 if not args.model: exit()
-urls = [
-        "https://drive.google.com/drive/folders/1eeJ0MjK6KndRq_tJa1vOpHd85w_nUdyu",
-        "https://drive.google.com/drive/folders/1eyV5-UMri8BH6uADhN7OPLKWYzND5Z_-",
-        "https://drive.google.com/drive/folders/1D2IRW-0FNwQVqYhYJ-9bRiD3xrIrhaS9",
-        "https://drive.google.com/drive/folders/1XSetm-g4lmY6XMretDxL8rp9XMyR8yNb",
-    ]
-for url in urls:
-    gdown.download_folder(url)
+model_paths = [
+    'huggyllama/llama-7b_SpclSpclSpcl_None_2024-06-02-00-00-00',
+    'mistralai/Mistral-7B-v0.1_SpclSpclSpcl_None_2024-07-20-01-59-11',
+    'huggyllama/llama-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00',
+    'mistralai/Mistral-7B-v0.1_SpclSpclSpcl_NaiveCompletion_2024-07-20-05-46-17',
+]
+
+for model_path in model_paths:
+    if os.path.exists(model_path): print(model_path, 'already exists.'); continue
+    model_dir = model_path.split('/')[0]
+    os.makedirs(model_dir, exist_ok=True)
+    cmd = 'wget -P {model_dir} https://dl.fbaipublicfiles.com/SecAlign/{model_path} && unzip {model_path} -d {model_dir} && rm {model_path}'.format(model_path=model_path + '.zip', model_dir=model_dir)
+    print(cmd)
+    os.system(cmd)
