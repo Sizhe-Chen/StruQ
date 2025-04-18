@@ -57,28 +57,34 @@ def smart_tokenizer_and_embedding_resize(
     tokenizer: transformers.PreTrainedTokenizer,
     model: transformers.PreTrainedModel,
 ):
-    """Resize tokenizer and embedding.
-
-    Note: This is the unoptimized version that may make your embedding size not be divisible by 64.
     """
-    num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
+    Enlarge the vocabulary for the model and tokenizer, with new special tokens for StruQ delimiter tokens.
+    The special delimiters are denoted by SPECIAL_DELM_TOKENS in config.py
+    The textual delimiters (used for special delimiter initialization) are denoted by TEXTUAL_DELM_TOKENS in config.py
+    The model/tokenizer is not deepcopied, so no need to return
+    """
+    assert len(SPECIAL_DELM_TOKENS) == len(TEXTUAL_DELM_TOKENS)
+    num_new_tokens = tokenizer.add_special_tokens({
+        'pad_token': DEFAULT_TOKENS['pad_token'],
+        'additional_special_tokens': SPECIAL_DELM_TOKENS
+        })
     model.resize_token_embeddings(len(tokenizer))
+    delimiter_init_embed_index_from_text = [tokenizer.encode(v, add_special_tokens=False)[0] for v in TEXTUAL_DELM_TOKENS]
+    assert num_new_tokens == len(SPECIAL_DELM_TOKENS) + 1
 
-    REAL_DELIMITERS_INIT_EMBD_IND, _ = get_embedding_indices(tokenizer)
+    input_embeddings = model.get_input_embeddings().weight.data
+    output_embeddings = model.get_output_embeddings().weight.data
 
-    if num_new_tokens > 0:
-        input_embeddings = model.get_input_embeddings().weight.data
-        output_embeddings = model.get_output_embeddings().weight.data
+    # Initialize the [PAD] token with the mean of all embeddings
+    input_embeddings[-num_new_tokens] = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+    output_embeddings[-num_new_tokens] = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
 
-        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
-
-        input_embeddings[-num_new_tokens] = input_embeddings_avg
-        output_embeddings[-num_new_tokens] = output_embeddings_avg
-
-        for i in range(len(SPECIAL_DELM_TOKENS)): ### initialize real delimiter's embedding by the existing ones
-            input_embeddings[-num_new_tokens+i+1] = input_embeddings[REAL_DELIMITERS_INIT_EMBD_IND[i]]
-            output_embeddings[-num_new_tokens+i+1] = output_embeddings[REAL_DELIMITERS_INIT_EMBD_IND[i]]
+    # Initialize the 5 StruQ delimiters with the embeddings of the corresponding textual delimiters
+    for i in range(len(SPECIAL_DELM_TOKENS)):
+        index = -num_new_tokens+i+1
+        print('Initialize special delimiter token', tokenizer.decode(len(tokenizer) + index), 'from the embedding of', tokenizer.decode(delimiter_init_embed_index_from_text[i]))
+        input_embeddings[index] = input_embeddings[delimiter_init_embed_index_from_text[i]]
+        output_embeddings[index] = output_embeddings[delimiter_init_embed_index_from_text[i]]
 
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args, downsample=True) -> Dict:
