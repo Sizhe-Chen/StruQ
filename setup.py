@@ -26,10 +26,10 @@ for data_url in data_urls:
 # Download model dependencies
 if not args.model: exit()
 model_paths = [
-    'huggyllama/llama-7b_SpclSpclSpcl_None_2024-06-02-00-00-00',
-    'mistralai/Mistral-7B-v0.1_SpclSpclSpcl_None_2024-07-20-01-59-11',
-    'huggyllama/llama-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00',
-    'mistralai/Mistral-7B-v0.1_SpclSpclSpcl_NaiveCompletion_2024-07-20-05-46-17',
+    'huggyllama/llama-7b_SpclSpclSpcl_None_2025-03-12-01-01-20',
+    'mistralai/Mistral-7B-v0.1_SpclSpclSpcl_None_2025-03-12-01-02-08',
+    'huggyllama/llama-7b_SpclSpclSpcl_NaiveCompletion_2025-03-12-01-02-37',
+    'mistralai/Mistral-7B-v0.1_SpclSpclSpcl_NaiveCompletion_2025-03-15-03-25-16',
 ]
 
 for model_path in model_paths:
