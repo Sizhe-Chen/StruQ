@@ -1,7 +1,7 @@
 # StruQ: Defending Against Prompt Injection with Structured Queries
 [Sizhe Chen](https://sizhe-chen.github.io), [Julien Piet](https://people.eecs.berkeley.edu/~julien.piet), [Chawin Sitawarin](https://chawins.github.io), [David Wagner](https://people.eecs.berkeley.edu/~daw)
 
-[![](https://img.shields.io/badge/USENIX%20Security-2025-e1dd72)](http://arxiv.org/abs/2402.06363) [![](https://img.shields.io/badge/Paper-a8c66c)](http://arxiv.org/pdf/2402.06363)  [![](https://img.shields.io/badge/Website-097770)](https://sizhe-chen.github.io/StruQ-Website) [![](https://img.shields.io/badge/Poster-1b6535)](https://drive.google.com/file/d/1UUz4t43sGqFOPZqNxf8izR--iLAl16QX/view?usp=sharing) [![](https://img.shields.io/badge/Talk-edca82)](https://simons.berkeley.edu/talks/david-wagner-uc-berkeley-2024-10-14) [![](https://img.shields.io/badge/Slides-f47a60)](https://drive.google.com/file/d/1baUbgFMILhPWBeGrm67XXy_H-jO7raRa/view?usp=sharing)
+[![](https://img.shields.io/badge/USENIX%20Security-2025-e1dd72)](http://arxiv.org/abs/2402.06363) [![](https://img.shields.io/badge/Paper-a8c66c)](http://arxiv.org/pdf/2402.06363)  [![](https://img.shields.io/badge/Website-097770)](https://sizhe-chen.github.io/StruQ-Website) [![](https://img.shields.io/badge/Poster-1b6535)](https://drive.google.com/file/d/1UUz4t43sGqFOPZqNxf8izR--iLAl16QX/view?usp=sharing) [![](https://img.shields.io/badge/Talk-edca82)](https://simons.berkeley.edu/talks/david-wagner-uc-berkeley-2024-10-14) [![](https://img.shields.io/badge/Slides-f47a60)](https://drive.google.com/file/d/1baUbgFMILhPWBeGrm67XXy_H-jO7raRa/view?usp=sharing) [![](https://img.shields.io/badge/Media-75291c)](https://bair.berkeley.edu/blog/2025/04/11/prompt-injection-defense)
 
 Recent advances in Large Language Models (LLMs) enable exciting LLM-integrated applications, which perform text-based tasks by utilizing their advanced language capabilities. However, as LLMs have improved, so have the attacks against them. Prompt injection attack is listed as the #1 threat to LLM-integrated applications, where an LLM input contains a trusted prompt (instruction) and an untrusted data (user documents, web retrieval, results from API calls, etc) with potentially injected instructions (Ignore previous instructions and …) to arbitrarily manipulate the LLM.
 
@@ -32,4 +32,4 @@ We introduce structured queries, a general approach to tackle this problem. Stru
 
 ## Testing
 + Running ```run.py``` should trigger the testing (on utility and security) at the end when the model is saved. Logs are saved to the model path.
-+ Run only testing by ```python test.py -m huggyllama/llama-7b_SpclSpclSpcl_NaiveCompletion_2024-02-02-00-00-00 -a none naive ignore completion_real gcg```. Log GCG by ```python log.py -m ```
++ Run only testing by ```python test.py -m [model_path] -a none naive ignore completion_real gcg```. Log GCG by ```python log.py -m ```
