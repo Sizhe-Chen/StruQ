@@ -1,5 +1,5 @@
 import os
-import gdown
+#import gdown
 import argparse
 parser = argparse.ArgumentParser(prog='Generating Advprompter Data')
 parser.add_argument('--model', default=False, action='store_true')
