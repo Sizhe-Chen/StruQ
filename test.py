@@ -302,7 +302,7 @@ def load_lora_model(model_name_or_path, device='0', load_model=True):
     special_tokens_dict["unk_token"] = DEFAULT_TOKENS['unk_token']
     special_tokens_dict["additional_special_tokens"] = SPECIAL_DELM_TOKENS
 
-    smart_tokenizer_and_embedding_resize(special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model)
+    #smart_tokenizer_and_embedding_resize(special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model)
     tokenizer.model_max_length = 512
     return model, tokenizer, frontend_delimiters, training_attacks
 
