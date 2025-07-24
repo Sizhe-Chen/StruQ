@@ -26,6 +26,7 @@ def format_with_other_delimiters(text, test=False):
         else: return role + delm
     
     for delm in DELIMITERS.values():
+        if '' in delm or ' ' in delm: continue
         text = text.replace(delm[0], mark.format(s=sample_delm('inst')))
         text = text.replace(delm[1], mark.format(s=sample_delm('inpt')))
         text = text.replace(delm[2], mark.format(s=sample_delm('resp')))
